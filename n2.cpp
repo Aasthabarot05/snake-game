@@ -4,12 +4,14 @@
 using namespace std;
 
 bool gameover;
+bool gamewin;
 const int width = 40;
 const int height = 20;
 int x, y, fruitY, score, fruitX;
 int TailX[100];
 int TailY[100];
 int ntail;
+const int maxTailLength = 100;
 bool paused = false;
 
 enum eDirection { STOP = 0, LEFT, RIGHT, UP, DOWN };
@@ -35,15 +37,18 @@ void ShowStartScreen() {
 
 void Setup() {
     gameover = false;
+    gamewin = false;
     dir = STOP;
     x = width / 2;
     y = height / 2;
-    fruitX = rand() % width;
-    fruitY = rand() % height;
     score = 0;
     ntail = 0;
-}
 
+    do {
+        fruitX = rand() % width;
+        fruitY = rand() % height;
+    } while (fruitX == x && fruitY == y);
+}
 
 void SetCursorPosition(int x, int y) {
     COORD coord;
@@ -53,13 +58,11 @@ void SetCursorPosition(int x, int y) {
 }
 
 void Draw() {
-    
     for (int i = 0; i < width + 2; i++) {
         cout << "#";
     }
     cout << endl;
 
-    
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             if (j == 0) cout << "#"; 
@@ -80,16 +83,17 @@ void Draw() {
         cout << endl;
     }
 
-    
     for (int i = 0; i < width + 2; i++) {
         cout << "#";
     }
     cout << endl;
 
-    
     cout << "Score: " << score << endl;
     if (paused) {
         cout << "Game Paused. Press any key to resume...\n";
+    }
+    if (gamewin) {
+        cout << "You Win! Press 'R' to Restart or 'Q' to Quit...\n";
     }
 }
 
@@ -101,16 +105,20 @@ void Input() {
         } else {
             switch (key) {
             case 'a':
-                dir = LEFT;
+                if (dir != RIGHT) 
+                    dir = LEFT;
                 break;
             case 'd':
-                dir = RIGHT;
+                if (dir != LEFT) 
+                    dir = RIGHT;
                 break;
             case 'w':
-                dir = UP;
+                if (dir != DOWN) 
+                    dir = UP;
                 break;
             case 's':
-                dir = DOWN;
+                if (dir != UP) 
+                    dir = DOWN;
                 break;
             case 'x':
                 gameover = true;
@@ -124,7 +132,7 @@ void Input() {
 }
 
 void Logic() {
-    if (paused) return;
+    if (paused || gamewin) return;
 
     int prevX = TailX[0];
     int prevY = TailY[0];
@@ -172,6 +180,9 @@ void Logic() {
         fruitY = rand() % height;
         ntail++;
         PlaySoundEffects(600, 150);
+        if (ntail == maxTailLength) {
+            gamewin = true;
+        }
     }
 }
 
@@ -196,6 +207,26 @@ void ShowGameOverScreen() {
     }
 }
 
+void ShowGameWinScreen() {
+    system("cls");
+    cout << "#############################\n";
+    cout << "#        YOU WIN!          #\n";
+    cout << "#############################\n";
+    cout << "Final Score: " << score << "\n";
+    cout << "Press 'R' to Restart or 'Q' to Quit...\n";
+    PlaySoundEffects(700, 500);
+    while (true) {
+        if (_kbhit()) {
+            char key = _getch();
+            if (key == 'r' || key == 'R') {
+                Setup();
+                break;
+            } else if (key == 'q' || key == 'Q') {
+                exit(0);
+            }
+        }
+    }
+}
 
 void HideCursor() {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -210,14 +241,18 @@ int main() {
     ShowStartScreen();
     Setup();
     while (true) {
-        while (!gameover) {
+        while (!gameover && !gamewin) {
             SetCursorPosition(0, 0); 
             Draw();
             Input();
             Logic();
             Sleep(200);
         }
-        ShowGameOverScreen();
+        if (gameover) {
+            ShowGameOverScreen();
+        } else if (gamewin) {
+            ShowGameWinScreen();
+        }
     }
     return 0;
 }
